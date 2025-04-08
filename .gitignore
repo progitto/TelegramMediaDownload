@@ -1,0 +1,14 @@
+venv/
+archive/
+logs/
+.vscode/
+*.env
+.git/
+session_name.session
+
+__pycache__/
+*:pyc
+*.pyo
+*.pyd
+*.log
+.DS_Store
