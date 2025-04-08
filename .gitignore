@@ -4,6 +4,7 @@ logs/
 .vscode/
 *.env
 .git/
+.gitignore
 session_name.session
 
 __pycache__/
