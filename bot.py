@@ -23,6 +23,11 @@ logging.basicConfig(
     ]
 )
 
+# Filter out noisy Telethon logs
+logging.getLogger('telethon.client.updates').setLevel(logging.WARNING)
+logging.getLogger('telethon.network').setLevel(logging.WARNING)
+logging.getLogger('telethon.client.auth').setLevel(logging.WARNING)
+
 logger = logging.getLogger(__name__)
 
 # Load variables from config.env
@@ -111,14 +116,34 @@ async def download_video(event):
         try:
             logger.info("🔄 Starting media download...")
             
-            file_path = await event.download_media(DOWNLOAD_PATH)
+            # Send initial progress message
+            progress_message = await event.reply("🔄 Starting download... 0%")
+            
+            # Progress callback function
+            async def progress_callback(current, total):
+                try:
+                    percentage = (current / total) * 100
+                    progress_bar = "█" * int(percentage // 5) + "░" * (20 - int(percentage // 5))
+                    progress_text = f"📥 Downloading: {percentage:.1f}%\n[{progress_bar}]\n{current / (1024*1024):.1f} MB / {total / (1024*1024):.1f} MB"
+                    
+                    # Update message every 5% to avoid rate limiting
+                    if int(percentage) % 5 == 0 and int(percentage) != getattr(progress_callback, 'last_percentage', -1):
+                        await progress_message.edit(progress_text)
+                        progress_callback.last_percentage = int(percentage)
+                except Exception as e:
+                    logger.warning(f"⚠️ Error updating progress message: {str(e)}")
+            
+            file_path = await event.download_media(DOWNLOAD_PATH, progress_callback=progress_callback)
             file_size = os.path.getsize(file_path) / (1024 * 1024)  # Size in MB
             
             logger.info(f"✅ File downloaded: {file_path} ({file_size:.2f} MB)")
-            await event.reply("📥 Download completed!")
+            await progress_message.edit("📥 Download completed! ✅")
         except Exception as e:
             logger.error(f"❌ Error during download: {str(e)}")
-            await event.reply("❌ An error occurred during download.")
+            try:
+                await progress_message.edit("❌ Download failed!")
+            except:
+                await event.reply("❌ An error occurred during download.")
     else:
         logger.info("📝 Message does not contain media, ignored.")
 
