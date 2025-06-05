@@ -10,6 +10,11 @@ A Python bot that automatically downloads media files from a specific Telegram c
 - 📝 **Comprehensive Logging**: Detailed logs with timestamps and status updates
 - 🛡️ **Error Handling**: Robust error handling and recovery
 - 🔄 **Session Persistence**: Maintains login session across restarts
+- ⏸️ **Pause/Resume Downloads**: Temporarily pause automatic downloads
+- 📈 **Persistent Statistics**: Tracks download counts and sizes across restarts
+- 💾 **Disk Usage Monitoring**: Shows disk space with warnings
+- 🕒 **Uptime Tracking**: Displays how long the bot has been running
+- 💬 **Interactive Commands**: Control the bot with slash commands
 
 ## Prerequisites
 
@@ -68,6 +73,8 @@ A Python bot that automatically downloads media files from a specific Telegram c
 | `DOWNLOAD_PATH` | Absolute path where files will be saved | `/home/user/downloads` |
 | `TARGET_CHAT_ID` | Chat ID to monitor (see below for how to get this) | `-1001234567890` |
 | `ALLOWED_USER` | Username (without @) or numeric user ID | `john_doe` or `123456789` |
+| `STATS_FILE` | Path to JSON file for statistics | `bot_stats.json` |
+| `DISK_WARNING_THRESHOLD` | Disk usage warning percentage | `90` |
 
 ### Getting the Chat ID
 
@@ -90,6 +97,42 @@ There are several ways to get a chat ID:
 3. **Monitor logs**: Check the console output or the log files in the `logs/` directory
 
 4. **Send media**: Have the authorized user send media files to the target chat
+
+### Commands
+
+Use these slash commands in the target chat:
+
+| Command | Description |
+|---------|-------------|
+| `/start` | Welcome message |
+| `/help` | Show command list |
+| `/status` | Current bot status |
+| `/stats` | Detailed download statistics |
+| `/pause` | Pause automatic downloads |
+| `/resume` | Resume automatic downloads |
+| `/disk` | Disk usage information |
+| `/logs` | Show recent log entries |
+
+Example:
+
+```
+/status
+📊 Bot Status
+🟢 Status: Running
+⏱️ Uptime: 2:30:15
+✅ Downloads: 47
+📁 Total size: 2.3 GB
+```
+
+```
+/disk
+💾 Disk Usage Information
+📂 Path: /downloads
+💽 Total: 500 GB
+📊 Used: 234 GB (46.8%)
+🆓 Free: 266 GB
+🟢 Status: Good
+```
 
 ## How It Works
 
