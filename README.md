@@ -50,18 +50,26 @@ A Python bot that automatically downloads media files from a specific Telegram c
 
 2. **Edit `config.env` with your settings**:
    ```env
-   # Telegram API credentials
-   API_ID=your_api_id_here
-   API_HASH=your_api_hash_here
+   # Telegram bot API ID
+   API_ID=
    
-   # Download directory (absolute path)
-   DOWNLOAD_PATH=/path/to/your/download/folder
+   # Telegram bot API HASH
+   API_HASH=
    
-   # Target chat ID (group/channel/private chat)
-   TARGET_CHAT_ID=-1001234567890
+   # Absolute path for downloaded files
+   DOWNLOAD_PATH=
    
-   # Authorized user (username without @ or numeric user ID)
-   ALLOWED_USER=your_username
+   # Channel/group id where media are forwarded
+   TARGET_CHAT_ID=
+   
+   # user that can forward media files without @ (or numeric user ID)
+   ALLOWED_USER=
+   
+   # File where statistics are stored
+   STATS_FILE=bot_stats.json
+   
+   # Percentage threshold for disk space warnings
+   DISK_WARNING_THRESHOLD=90
    ```
 
 ### Configuration Parameters
@@ -155,10 +163,10 @@ The bot creates detailed logs in the `logs/` directory:
 
 ```
 telegram-media-downloader/
-├── bot.py                    # Main bot script
-├── config.env               # Configuration file (create from example)
-├── config.env.example       # Example configuration
-├── requirements.txt         # Python dependencies
+├── bot.py                  # Main bot script
+├── config.env              # Configuration file (create from example)
+├── config.env.example      # Example configuration
+├── requirements.txt        # Python dependencies
 ├── README.md               # This file
 ├── LICENSE                 # GPL v3 license
 ├── logs/                   # Log files directory (auto-created)
