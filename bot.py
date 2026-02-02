@@ -43,6 +43,7 @@ TARGET_CHAT_ID_STR = os.getenv("TARGET_CHAT_ID")
 ALLOWED_USER = os.getenv("ALLOWED_USER")  # Username of authorized user
 STATS_FILE = os.getenv("STATS_FILE", "bot_stats.json")
 DISK_WARNING_THRESHOLD = int(os.getenv("DISK_WARNING_THRESHOLD", "90"))  # in percent
+RENAME_TIMEOUT_SECONDS = int(os.getenv("RENAME_TIMEOUT_SECONDS", "60"))
 
 # Verify credentials were loaded correctly
 if not API_ID or not API_HASH:
@@ -97,6 +98,15 @@ def save_stats():
 stats = load_stats()
 paused = False
 bot_start_time = datetime.now()
+
+
+def sanitize_filename(filename):
+    filename = os.path.basename(filename.strip())
+    if os.sep in filename:
+        filename = filename.replace(os.sep, "_")
+    if os.altsep and os.altsep in filename:
+        filename = filename.replace(os.altsep, "_")
+    return filename
 
 
 async def is_authorized(event):
@@ -282,7 +292,40 @@ async def download_video(event):
         stats['downloads'] = stats.get('downloads', 0) + 1
         try:
             logger.info("🔄 Starting media download...")
-            
+            original_name = event.file.name if event.file else None
+            original_name = original_name or f"media_{event.id}"
+            original_name = sanitize_filename(original_name)
+            original_base, original_ext = os.path.splitext(original_name)
+            if not original_ext and getattr(event.file, "ext", None):
+                original_ext = event.file.ext
+            if not original_ext:
+                original_ext = ""
+            original_name = f"{original_base}{original_ext}"
+
+            new_name = None
+            try:
+                async with client.conversation(event.chat_id, timeout=RENAME_TIMEOUT_SECONDS) as conv:
+                    prompt_text = (
+                        f"Download del file {original_name}, "
+                        "se vuoi rinominarlo scrivi il nuovo nome o premi invio "
+                        "per far iniziare il download."
+                    )
+                    await conv.send_message(prompt_text)
+                    response = await conv.get_response()
+                    if response and response.sender_id == sender.id and response.text is not None:
+                        response_text = response.text.strip()
+                        if response_text:
+                            new_name = response_text
+            except asyncio.TimeoutError:
+                logger.info("⏱️ No rename response received; using original filename.")
+
+            final_name = original_name
+            if new_name:
+                sanitized_new_name = sanitize_filename(new_name)
+                new_base, _ = os.path.splitext(sanitized_new_name)
+                final_name = f"{new_base}{original_ext}"
+            download_target = os.path.join(DOWNLOAD_PATH, final_name)
+
             # Send initial progress message
             progress_message = await event.reply("🔄 Starting download... 0%")
             
@@ -300,7 +343,7 @@ async def download_video(event):
                 except Exception as e:
                     logger.warning(f"⚠️ Error updating progress message: {str(e)}")
             
-            file_path = await event.download_media(DOWNLOAD_PATH, progress_callback=progress_callback)
+            file_path = await event.download_media(download_target, progress_callback=progress_callback)
             size_bytes = os.path.getsize(file_path)
             file_size = size_bytes / (1024 * 1024)  # Size in MB
 
