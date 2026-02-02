@@ -311,8 +311,8 @@ async def download_video(event):
                         "per far iniziare il download."
                     )
                     await conv.send_message(prompt_text)
-                    response = await conv.get_response(from_user=sender.id)
-                    if response and response.text is not None:
+                    response = await conv.get_response()
+                    if response and response.sender_id == sender.id and response.text is not None:
                         response_text = response.text.strip()
                         if response_text:
                             new_name = response_text
