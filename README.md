@@ -15,6 +15,7 @@ A Python bot that automatically downloads media files from a specific Telegram c
 - 💾 **Disk Usage Monitoring**: Shows disk space with warnings
 - 🕒 **Uptime Tracking**: Displays how long the bot has been running
 - 💬 **Interactive Commands**: Control the bot with slash commands
+- ✏️ **Rename Prompt**: Optionally rename files before download while preserving the original extension
 
 ## Prerequisites
 
@@ -70,6 +71,9 @@ A Python bot that automatically downloads media files from a specific Telegram c
    
    # Percentage threshold for disk space warnings
    DISK_WARNING_THRESHOLD=90
+
+   # Seconds to wait for rename input before downloading
+   RENAME_TIMEOUT_SECONDS=60
    ```
 
 ### Configuration Parameters
@@ -83,6 +87,7 @@ A Python bot that automatically downloads media files from a specific Telegram c
 | `ALLOWED_USER` | Username (without @) or numeric user ID | `john_doe` or `123456789` |
 | `STATS_FILE` | Path to JSON file for statistics | `bot_stats.json` |
 | `DISK_WARNING_THRESHOLD` | Disk usage warning percentage | `90` |
+| `RENAME_TIMEOUT_SECONDS` | Seconds to wait for rename input | `60` |
 
 ### Getting the Chat ID
 
@@ -147,6 +152,8 @@ Example:
 1. The bot connects to Telegram using your API credentials
 2. It monitors the specified chat for new messages
 3. When a message with media is received from an authorized user:
+   - Prompts for an optional rename before downloading
+   - Preserves the original extension even if a new name is provided
    - Downloads the media file to the specified directory
    - Shows download progress in real-time
    - Logs the operation details
