@@ -98,6 +98,7 @@ def save_stats():
 stats = load_stats()
 paused = False
 bot_start_time = datetime.now()
+rename_lock = asyncio.Lock()
 
 
 def sanitize_filename(filename):
@@ -304,24 +305,31 @@ async def download_video(event):
             original_name = f"{original_base}{original_ext}"
 
             new_name = None
-            try:
-                async with client.conversation(event.chat_id, timeout=RENAME_TIMEOUT_SECONDS) as conv:
-                    prompt_text = (
-                        f"Download del file: {original_name}\n\n"
-                        "Per rinominare il file, scrivi il nuovo nome.\n"
-                        "Per mantenere il nome originale e avviare subito il download, "
-                        "invia /skiprename."
-                    )
-                    await conv.send_message(prompt_text)
-                    response = await conv.get_response()
-                    if response and response.sender_id == sender.id and response.text is not None:
-                        response_text = response.text.strip()
-                        if response_text.lower() == "/skiprename":
-                            logger.info("⏭️ Rename skipped; using original filename.")
-                        elif response_text:
-                            new_name = response_text
-            except asyncio.TimeoutError:
-                logger.info("⏱️ No rename response received; using original filename.")
+            if rename_lock.locked():
+                await event.reply(
+                    "⏳ Un’altra richiesta è in corso. "
+                    "Questo file verrà elaborato successivamente."
+                )
+
+            async with rename_lock:
+                try:
+                    async with client.conversation(event.chat_id, timeout=RENAME_TIMEOUT_SECONDS) as conv:
+                        prompt_text = (
+                            f"Download del file: {original_name}\n\n"
+                            "Per rinominare il file, scrivi il nuovo nome.\n"
+                            "Per mantenere il nome originale e avviare subito il download, "
+                            "invia /skiprename."
+                        )
+                        await conv.send_message(prompt_text)
+                        response = await conv.get_response()
+                        if response and response.sender_id == sender.id and response.text is not None:
+                            response_text = response.text.strip()
+                            if response_text.lower() == "/skiprename":
+                                logger.info("⏭️ Rename skipped; using original filename.")
+                            elif response_text:
+                                new_name = response_text
+                except asyncio.TimeoutError:
+                    logger.info("⏱️ No rename response received; using original filename.")
 
             final_name = original_name
             if new_name:

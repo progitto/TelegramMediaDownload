@@ -133,6 +133,7 @@ When a media file is received, the bot asks whether it should be renamed:
 
 - Send a new filename to rename the file. The original extension is preserved.
 - Send `/skiprename` to keep the original filename and start the download immediately.
+- If another rename request is active, the file waits until the previous request is completed.
 - If no response is received before `RENAME_TIMEOUT_SECONDS`, the download starts with the original filename.
 
 Example:
