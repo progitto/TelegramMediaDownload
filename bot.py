@@ -43,7 +43,7 @@ TARGET_CHAT_ID_STR = os.getenv("TARGET_CHAT_ID")
 ALLOWED_USER = os.getenv("ALLOWED_USER")  # Username of authorized user
 STATS_FILE = os.getenv("STATS_FILE", "bot_stats.json")
 DISK_WARNING_THRESHOLD = int(os.getenv("DISK_WARNING_THRESHOLD", "90"))  # in percent
-RENAME_TIMEOUT_SECONDS = int(os.getenv("RENAME_TIMEOUT_SECONDS", "60"))
+RENAME_TIMEOUT_SECONDS = int(os.getenv("RENAME_TIMEOUT_SECONDS", "5"))
 
 # Verify credentials were loaded correctly
 if not API_ID or not API_HASH:
@@ -169,7 +169,8 @@ async def cmd_help(event):
         "*/pause* - Pause downloads\n"
         "*/resume* - Resume downloads\n"
         "*/disk* - Disk usage info\n"
-        "*/logs* - Show recent log entries")
+        "*/logs* - Show recent log entries\n"
+        "*/skiprename* - Keep the original filename when prompted")
     await event.reply(help_text)
 
 
@@ -306,15 +307,18 @@ async def download_video(event):
             try:
                 async with client.conversation(event.chat_id, timeout=RENAME_TIMEOUT_SECONDS) as conv:
                     prompt_text = (
-                        f"Download del file {original_name}, "
-                        "se vuoi rinominarlo scrivi il nuovo nome o premi invio "
-                        "per far iniziare il download."
+                        f"Download del file: {original_name}\n\n"
+                        "Per rinominare il file, scrivi il nuovo nome.\n"
+                        "Per mantenere il nome originale e avviare subito il download, "
+                        "invia /skiprename."
                     )
                     await conv.send_message(prompt_text)
                     response = await conv.get_response()
                     if response and response.sender_id == sender.id and response.text is not None:
                         response_text = response.text.strip()
-                        if response_text:
+                        if response_text.lower() == "/skiprename":
+                            logger.info("⏭️ Rename skipped; using original filename.")
+                        elif response_text:
                             new_name = response_text
             except asyncio.TimeoutError:
                 logger.info("⏱️ No rename response received; using original filename.")

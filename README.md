@@ -15,7 +15,7 @@ A Python bot that automatically downloads media files from a specific Telegram c
 - 💾 **Disk Usage Monitoring**: Shows disk space with warnings
 - 🕒 **Uptime Tracking**: Displays how long the bot has been running
 - 💬 **Interactive Commands**: Control the bot with slash commands
-- ✏️ **Rename Prompt**: Optionally rename files before download while preserving the original extension
+- ✏️ **Rename Prompt**: Optionally rename files before download, or use `/skiprename` to immediately keep the original filename
 
 ## Prerequisites
 
@@ -125,6 +125,15 @@ Use these slash commands in the target chat:
 | `/resume` | Resume automatic downloads |
 | `/disk` | Disk usage information |
 | `/logs` | Show recent log entries |
+| `/skiprename` | Keep the original filename and immediately start the pending download |
+
+### Renaming files
+
+When a media file is received, the bot asks whether it should be renamed:
+
+- Send a new filename to rename the file. The original extension is preserved.
+- Send `/skiprename` to keep the original filename and start the download immediately.
+- If no response is received before `RENAME_TIMEOUT_SECONDS`, the download starts with the original filename.
 
 Example:
 
@@ -153,6 +162,7 @@ Example:
 2. It monitors the specified chat for new messages
 3. When a message with media is received from an authorized user:
    - Prompts for an optional rename before downloading
+   - Accepts `/skiprename` to immediately download using the original filename
    - Preserves the original extension even if a new name is provided
    - Downloads the media file to the specified directory
    - Shows download progress in real-time
