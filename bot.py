@@ -99,6 +99,8 @@ stats = load_stats()
 paused = False
 bot_start_time = datetime.now()
 rename_lock = asyncio.Lock()
+download_path_lock = asyncio.Lock()
+reserved_download_paths = set()
 
 
 def sanitize_filename(filename):
@@ -108,6 +110,50 @@ def sanitize_filename(filename):
     if os.altsep and os.altsep in filename:
         filename = filename.replace(os.altsep, "_")
     return filename
+
+
+def find_available_download_path(filename):
+    base, extension = os.path.splitext(filename)
+    candidate = os.path.join(DOWNLOAD_PATH, filename)
+    counter = 1
+
+    while os.path.exists(candidate) or candidate in reserved_download_paths:
+        candidate = os.path.join(
+            DOWNLOAD_PATH,
+            f"{base} ({counter}){extension}"
+        )
+        counter += 1
+
+    return candidate
+
+
+async def reserve_download_path(filename):
+    async with download_path_lock:
+        path = find_available_download_path(filename)
+        reserved_download_paths.add(path)
+        return path
+
+
+async def release_download_path(path):
+    async with download_path_lock:
+        reserved_download_paths.discard(path)
+
+
+async def publish_download(temporary_path, final_path, preferred_filename):
+    async with download_path_lock:
+        original_reserved_path = final_path
+        if os.path.exists(final_path):
+            reserved_download_paths.discard(final_path)
+            final_path = find_available_download_path(preferred_filename)
+            reserved_download_paths.add(final_path)
+
+        try:
+            os.replace(temporary_path, final_path)
+            return final_path
+        except Exception:
+            if final_path != original_reserved_path:
+                reserved_download_paths.discard(final_path)
+            raise
 
 
 async def is_authorized(event):
@@ -336,26 +382,52 @@ async def download_video(event):
                 sanitized_new_name = sanitize_filename(new_name)
                 new_base, _ = os.path.splitext(sanitized_new_name)
                 final_name = f"{new_base}{original_ext}"
-            download_target = os.path.join(DOWNLOAD_PATH, final_name)
 
-            # Send initial progress message
-            progress_message = await event.reply("🔄 Starting download... 0%")
-            
-            # Progress callback function
-            async def progress_callback(current, total):
-                try:
-                    percentage = (current / total) * 100
-                    progress_bar = "█" * int(percentage // 5) + "░" * (20 - int(percentage // 5))
-                    progress_text = f"📥 Downloading: {percentage:.1f}%\n[{progress_bar}]\n{current / (1024*1024):.1f} MB / {total / (1024*1024):.1f} MB"
-                    
-                    # Update message every 5% to avoid rate limiting
-                    if int(percentage) % 5 == 0 and int(percentage) != getattr(progress_callback, 'last_percentage', -1):
-                        await progress_message.edit(progress_text)
-                        progress_callback.last_percentage = int(percentage)
-                except Exception as e:
-                    logger.warning(f"⚠️ Error updating progress message: {str(e)}")
-            
-            file_path = await event.download_media(download_target, progress_callback=progress_callback)
+            final_path = await reserve_download_path(final_name)
+            temporary_path = f"{final_path}.{event.id}.part"
+
+            try:
+                # Send initial progress message
+                progress_message = await event.reply("🔄 Starting download... 0%")
+
+                # Progress callback function
+                async def progress_callback(current, total):
+                    try:
+                        percentage = (current / total) * 100
+                        progress_bar = "█" * int(percentage // 5) + "░" * (20 - int(percentage // 5))
+                        progress_text = f"📥 Downloading: {percentage:.1f}%\n[{progress_bar}]\n{current / (1024*1024):.1f} MB / {total / (1024*1024):.1f} MB"
+
+                        # Update message every 5% to avoid rate limiting
+                        if int(percentage) % 5 == 0 and int(percentage) != getattr(progress_callback, 'last_percentage', -1):
+                            await progress_message.edit(progress_text)
+                            progress_callback.last_percentage = int(percentage)
+                    except Exception as e:
+                        logger.warning(f"⚠️ Error updating progress message: {str(e)}")
+
+                downloaded_path = await event.download_media(
+                    temporary_path,
+                    progress_callback=progress_callback
+                )
+                if not downloaded_path:
+                    raise RuntimeError("Telegram did not return a downloaded file path")
+
+                final_path = await publish_download(
+                    temporary_path,
+                    final_path,
+                    final_name
+                )
+            finally:
+                await release_download_path(final_path)
+                if os.path.exists(temporary_path):
+                    try:
+                        os.remove(temporary_path)
+                    except OSError as cleanup_error:
+                        logger.warning(
+                            f"⚠️ Could not remove partial download "
+                            f"'{temporary_path}': {cleanup_error}"
+                        )
+
+            file_path = final_path
             size_bytes = os.path.getsize(file_path)
             file_size = size_bytes / (1024 * 1024)  # Size in MB
 

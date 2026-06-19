@@ -6,6 +6,7 @@ A Python bot that automatically downloads media files from a specific Telegram c
 
 - 🔐 **User Authorization**: Only specified users can trigger downloads
 - 📁 **Automatic Download**: Downloads media files to a configurable directory
+- 🛡️ **Safe File Handling**: Avoids overwriting existing files and uses temporary files for incomplete downloads
 - 📊 **Progress Tracking**: Shows real-time download progress with progress bars
 - 📝 **Comprehensive Logging**: Detailed logs with timestamps and status updates
 - 🛡️ **Error Handling**: Robust error handling and recovery
@@ -165,6 +166,8 @@ Example:
    - Prompts for an optional rename before downloading
    - Accepts `/skiprename` to immediately download using the original filename
    - Preserves the original extension even if a new name is provided
+   - Adds a numeric suffix such as `(1)` if the destination filename already exists
+   - Downloads to a temporary `.part` file and assigns the final name only after completion
    - Downloads the media file to the specified directory
    - Shows download progress in real-time
    - Logs the operation details
